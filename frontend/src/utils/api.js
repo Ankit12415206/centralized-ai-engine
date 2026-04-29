@@ -81,4 +81,14 @@ export async function clearUserContext(userId) {
   return res.data
 }
 
+export async function getSessions(userId) {
+  const res = await api.get(`/api/sessions/${userId}`)
+  return res.data.sessions
+}
+
+export async function getSessionHistory(userId, sessionId) {
+  const res = await api.get(`/api/history/${userId}/${sessionId}`)
+  return res.data.messages
+}
+
 export default api

@@ -59,6 +59,20 @@ class ContextMemoryEngine:
         conn.commit()
         conn.close()
 
+    def get_sessions(self, user_id: str) -> List[dict]:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT session_id, user_msg, MIN(timestamp) as start_time 
+            FROM context_memory 
+            WHERE user_id = ? 
+            GROUP BY session_id 
+            ORDER BY start_time DESC
+        ''', (user_id,))
+        rows = cursor.fetchall()
+        conn.close()
+        return [{"session_id": r[0], "title": r[1][:50], "timestamp": r[2]} for r in rows]
+
     def get_user_profile(self, user_id: str) -> dict:
         conn = get_connection()
         cursor = conn.cursor()

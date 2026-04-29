@@ -167,6 +167,32 @@ async def clear_user_context(user_id: str):
     return {"message": f"Context cleared for user {user_id}"}
 
 
+@app.get("/api/sessions/{user_id}")
+async def get_sessions(user_id: str):
+    sessions = context_engine.get_sessions(user_id)
+    return {"sessions": sessions}
+
+
+@app.get("/api/history/{user_id}/{session_id}")
+async def get_session_history(user_id: str, session_id: str):
+    from modules.database import get_connection
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT user_msg, ai_response FROM context_memory 
+        WHERE user_id = ? AND session_id = ? 
+        ORDER BY timestamp ASC
+    ''', (user_id, session_id))
+    rows = cursor.fetchall()
+    conn.close()
+    
+    messages = []
+    for r in rows:
+        messages.append({"role": "user", "content": r[0]})
+        messages.append({"role": "assistant", "content": r[1]})
+    return {"messages": messages}
+
+
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "engine": "Centralized AI Engine v2.0"}

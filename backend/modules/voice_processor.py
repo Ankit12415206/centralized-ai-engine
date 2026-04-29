@@ -14,15 +14,20 @@ class VoiceProcessorModule:
         self.recognizer = sr.Recognizer()
 
     def speech_to_text(self, audio_bytes: bytes, language: str = "en-US") -> str:
-        audio_file = io.BytesIO(audio_bytes)
         try:
-            with sr.AudioFile(audio_file) as source:
+            from pydub import AudioSegment
+            # Convert incoming audio (webm/ogg/etc) to WAV for speech_recognition
+            audio = AudioSegment.from_file(io.BytesIO(audio_bytes))
+            wav_io = io.BytesIO()
+            audio.export(wav_io, format="wav")
+            wav_io.seek(0)
+            
+            with sr.AudioFile(wav_io) as source:
                 audio_data = self.recognizer.record(source)
             return self.recognizer.recognize_google(audio_data, language=language)
-        except sr.UnknownValueError:
+        except Exception as e:
+            print(f"STT Error: {e}")
             return ""
-        except sr.RequestError as e:
-            raise RuntimeError(f"Speech recognition error: {e}")
 
     def text_to_speech(self, text: str, language: str = "en") -> str:
         try:

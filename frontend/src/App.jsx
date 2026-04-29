@@ -1,111 +1,178 @@
-import React, { useState } from 'react'
-import { Routes, Route, NavLink, useLocation } from 'react-router-dom'
+import React, { useState, useEffect } from 'react'
+import { Routes, Route, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import { 
+  Layout, MessageSquare, Database, Settings, Moon, Sun, 
+  History, Plus, MessageCircle, MoreVertical, Trash2
+} from 'lucide-react'
 import ChatPage from './pages/ChatPage'
 import DashboardPage from './pages/DashboardPage'
 import { useTheme } from './context/ThemeContext'
-import { Brain, MessageSquare, BarChart2, Sun, Moon, Zap, LayoutGrid, Cpu } from 'lucide-react'
+import { getSessions } from './utils/api'
 
-export default function App() {
-  const { theme, toggle, isDark } = useTheme()
+const App = () => {
+  const { theme, toggleTheme } = useTheme()
   const location = useLocation()
-  const [hoveredNav, setHoveredNav] = useState(null)
+  const navigate = useNavigate()
+  const [sessions, setSessions] = useState([])
+  const [loadingSessions, setLoadingSessions] = useState(false)
+
+  const USER_ID = 'ankit_user'
+
+  const refreshSessions = async () => {
+    setLoadingSessions(true)
+    try {
+      const data = await getSessions(USER_ID)
+      setSessions(data)
+    } catch (err) {
+      console.error("Failed to fetch sessions", err)
+    }
+    setLoadingSessions(false)
+  }
+
+  useEffect(() => {
+    refreshSessions()
+    window.addEventListener('refresh-sessions', refreshSessions)
+    return () => window.removeEventListener('refresh-sessions', refreshSessions)
+  }, [])
 
   const navItems = [
-    { to: '/', icon: MessageSquare, label: 'Chat Engine' },
-    { to: '/dashboard', icon: LayoutGrid, label: 'Analytics' },
+    { path: '/', icon: <MessageSquare size={18} />, label: 'New Chat' },
+    { path: '/dashboard', icon: <Database size={18} />, label: 'Analytics' },
   ]
 
-  return (
-    <div className="flex h-screen overflow-hidden bg-[#050505] selection:bg-emerald-500/30 selection:text-emerald-200">
+  const handleNewChat = () => {
+    window.dispatchEvent(new CustomEvent('new-chat'))
+    navigate('/')
+  }
 
+  const handleLoadSession = (sessionId) => {
+    window.dispatchEvent(new CustomEvent('load-session', { detail: { sessionId } }))
+    navigate('/')
+  }
+
+  return (
+    <div className="flex h-screen overflow-hidden bg-[var(--bg)] transition-colors duration-300">
+      
       {/* ── Sidebar ────────────────────────────────────────────────────────── */}
-      <aside className="glass-panel w-20 flex flex-col items-center py-8 shrink-0 z-30 border-r border-white/5">
+      <aside className="w-72 border-r border-[var(--border)] flex flex-col glass z-30 overflow-hidden">
         
-        {/* Premium Logo */}
-        <div className="relative mb-10 group">
-          <div className="absolute -inset-2 bg-emerald-500/20 rounded-2xl blur-xl group-hover:bg-emerald-500/40 transition-all duration-500 opacity-0 group-hover:opacity-100" />
-          <motion.div 
-            whileHover={{ rotate: 180 }}
-            transition={{ duration: 0.6, ease: "anticipate" }}
-            className="relative w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-black shadow-[0_0_20px_rgba(16,185,129,0.3)] border border-emerald-400/50"
-          >
-            <Cpu size={24} />
-          </motion.div>
+        <div className="p-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-emerald-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
+              <Layout size={20} className="text-white" />
+            </div>
+            <span className="font-display font-bold text-lg tracking-tight">
+              AXIOM <span className="text-emerald-500">AI</span>
+            </span>
+          </div>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 flex flex-col gap-4">
-          {navItems.map(({ to, icon: Icon, label }) => {
-            const isActive = location.pathname === to
-            return (
-              <div key={to} className="relative">
-                <NavLink
-                  to={to}
-                  onMouseEnter={() => setHoveredNav(to)}
-                  onMouseLeave={() => setHoveredNav(null)}
-                  className={`
-                    w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300 relative
-                    ${isActive ? 'bg-white/10 text-emerald-400 border border-emerald-500/30' : 'text-white/30 hover:bg-white/5 hover:text-white/60'}
-                  `}
-                >
-                  {isActive && (
-                    <motion.div 
-                      layoutId="nav-active"
-                      className="absolute -left-4 w-1 h-6 bg-emerald-400 rounded-full shadow-[0_0_10px_rgba(52,211,153,0.8)]"
-                    />
-                  )}
-                  <Icon size={20} />
-                </NavLink>
+        <div className="px-4 mb-4">
+          <button 
+            onClick={handleNewChat}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl transition-all font-medium shadow-lg shadow-emerald-500/10"
+          >
+            <Plus size={18} />
+            <span>New Conversation</span>
+          </button>
+        </div>
 
-                {/* Tooltip */}
-                <AnimatePresence>
-                  {hoveredNav === to && (
-                    <motion.div
-                      initial={{ opacity: 0, x: 10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 10 }}
-                      className="absolute left-16 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-lg bg-[#121212] border border-white/10 text-[11px] font-medium text-white/80 whitespace-nowrap pointer-events-none shadow-2xl z-50"
-                    >
-                      {label}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            )
-          })}
+        <nav className="px-4 mb-6 space-y-1">
+          {navItems.map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              className={({ isActive }) => `
+                flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm
+                ${isActive 
+                  ? 'bg-emerald-500/10 text-emerald-500 font-semibold' 
+                  : 'text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] hover:text-[var(--text)]'
+                }
+              `}
+            >
+              {item.icon}
+              <span>{item.label}</span>
+            </NavLink>
+          ))}
         </nav>
 
-        {/* Bottom Actions */}
-        <div className="flex flex-col items-center gap-6">
-          <button
-            onClick={toggle}
-            className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-white/5 transition-all duration-300 group"
+        {/* ── Chat History ────────────────────────────────────────────────── */}
+        <div className="flex-1 flex flex-col min-h-0 border-t border-[var(--border)] pt-6">
+          <div className="px-6 mb-4 flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+            <span>Recent History</span>
+            <History size={12} />
+          </div>
+          
+          <div className="flex-1 overflow-y-auto px-4 space-y-1 scrollbar-hide">
+            {sessions.length === 0 && !loadingSessions && (
+              <div className="px-4 py-10 text-center">
+                <p className="text-xs text-[var(--text-secondary)] italic">No conversations yet</p>
+              </div>
+            )}
+            
+            {sessions.map((s) => (
+              <button
+                key={s.session_id}
+                onClick={() => handleLoadSession(s.session_id)}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left hover:bg-[var(--surface-hover)] transition-all group relative overflow-hidden"
+              >
+                <MessageCircle size={16} className="text-emerald-500/50 group-hover:text-emerald-500 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium truncate pr-4 text-[var(--text)]">{s.title || 'Untitled Chat'}</p>
+                  <p className="text-[10px] text-[var(--text-secondary)] opacity-60">
+                    {new Date(s.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                  </p>
+                </div>
+                <div className="absolute right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                   <MoreVertical size={14} className="text-[var(--text-secondary)]" />
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="p-4 bg-[var(--surface)] border-t border-[var(--border)] space-y-2">
+          <button 
+            onClick={toggleTheme}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] hover:text-[var(--text)] transition-all text-sm"
           >
-            <div className={`transition-all duration-500 ${isDark ? 'text-amber-400 group-hover:rotate-90' : 'text-emerald-500'}`}>
-              {isDark ? <Sun size={20} /> : <Moon size={20} />}
-            </div>
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            <span className="font-medium">{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
           </button>
           
-          <div className="text-[10px] font-mono text-white/20 tracking-tighter uppercase vertical-text transform -rotate-180 mb-2" style={{ writingMode: 'vertical-rl' }}>
-            Persistent AI
+          <div className="flex items-center gap-3 px-4 py-2 border-t border-[var(--border)] pt-4 mt-2">
+            <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-xs font-bold text-white shadow-lg">
+              A
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold truncate">Ankit</p>
+              <p className="text-[10px] text-[var(--text-secondary)]">Pro Account</p>
+            </div>
           </div>
         </div>
       </aside>
 
-      {/* ── Main content ───────────────────────────────────────────────────── */}
-      <main className="flex-1 relative flex flex-col bg-[#050505]">
-        {/* Ambient Glows */}
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-500/5 blur-[120px] rounded-full -translate-y-1/2 translate-x-1/3 pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-emerald-500/3 blur-[100px] rounded-full translate-y-1/3 -translate-x-1/4 pointer-events-none" />
-        
-        <div className="relative flex-1 flex flex-col h-full overflow-hidden">
-          <Routes>
-            <Route path="/" element={<ChatPage />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
-          </Routes>
-        </div>
+      {/* ── Main Content ────────────────────────────────────────────────────── */}
+      <main className="flex-1 relative flex flex-col min-w-0">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, x: 5 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -5 }}
+            transition={{ duration: 0.15 }}
+            className="flex-1 flex flex-col overflow-hidden"
+          >
+            <Routes>
+              <Route path="/" element={<ChatPage />} />
+              <Route path="/dashboard" element={<DashboardPage />} />
+            </Routes>
+          </motion.div>
+        </AnimatePresence>
       </main>
     </div>
   )
 }
+
+export default App

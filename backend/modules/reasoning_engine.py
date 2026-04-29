@@ -29,7 +29,7 @@ class ReasoningEngine:
             )
         return self._client
 
-    def _build_messages(self, platform_id, user_id, message, context, image_base64=None):
+    def _build_messages(self, platform_id, user_id, message, context, image_base64=None, **kwargs):
         style = self.adaptive_engine.get_response_style(user_id)
         prefs = self.adaptive_engine.get_user_preferences(user_id)
         topic_hint = ", ".join(prefs["top_topics"]) if prefs["top_topics"] else "general"
