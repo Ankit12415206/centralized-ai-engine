@@ -38,6 +38,7 @@ class ReasoningEngine:
 Provide context-aware, intelligent, and helpful responses.
 User's preferred response style: {style}.
 User's common topics of interest: {topic_hint}.
+IMPORTANT: Respond ONLY in the language identified as '{kwargs.get('target_lang_name', 'English')}'.
 Be consistent, accurate, and adapt your tone to the platform context."""
 
         messages = [{"role": "system", "content": system_prompt}]
@@ -70,6 +71,7 @@ Be consistent, accurate, and adapt your tone to the platform context."""
         user_id: str,
         message: str,
         context: List[dict],
+        target_lang_name: str = "English",
         session_id: Optional[str] = None,
         image_base64: Optional[str] = None,
     ) -> Generator:
@@ -80,14 +82,17 @@ Be consistent, accurate, and adapt your tone to the platform context."""
         # Use vision model if image present
         model = "gpt-4o" if image_base64 else self.model
 
-        messages = self._build_messages(platform_id, user_id, message, context, image_base64)
+        messages = self._build_messages(
+            platform_id, user_id, message, context, image_base64, 
+            target_lang_name=target_lang_name
+        )
 
         stream = self.client.chat.completions.create(
             model=model,
             messages=messages,
             temperature=0.7,
             max_tokens=1024,
-            stream=True,  # KEY: enables streaming
+            stream=True,
         )
 
         full_response = ""
@@ -97,13 +102,16 @@ Be consistent, accurate, and adapt your tone to the platform context."""
                 full_response += delta
                 yield delta, session_id, full_response
 
-    def generate(self, platform_id, user_id, message, context, session_id=None, image_base64=None):
+    def generate(self, platform_id, user_id, message, context, target_lang_name="English", session_id=None, image_base64=None):
         """Non-streaming fallback — collects full response."""
         if not session_id:
             session_id = self.context_engine.create_session(user_id)
 
         model = "gpt-4o" if image_base64 else self.model
-        messages = self._build_messages(platform_id, user_id, message, context, image_base64)
+        messages = self._build_messages(
+            platform_id, user_id, message, context, image_base64,
+            target_lang_name=target_lang_name
+        )
 
         response = self.client.chat.completions.create(
             model=model,

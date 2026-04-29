@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { getUserContext, clearUserContext } from '../utils/api'
 import { useTheme } from '../context/ThemeContext'
-import { Database, Trash2, RefreshCw, Clock, MessageSquare, User, Bot, Zap, Activity } from 'lucide-react'
+import { Database, Trash2, RefreshCw, Clock, MessageSquare, User, Bot, Zap, Activity, Search, ShieldCheck } from 'lucide-react'
 
 export default function DashboardPage() {
   const { isDark } = useTheme()
@@ -16,250 +17,175 @@ export default function DashboardPage() {
     if (!userId.trim()) return
     setLoading(true); setError(''); setCleared(false)
     try { setContext(await getUserContext(userId.trim())) }
-    catch { setError('Could not fetch context. Is the backend running on port 8000?'); setContext(null) }
+    catch { setError('System disconnected. Please verify engine endpoint.'); setContext(null) }
     finally { setLoading(false) }
   }
 
   const handleClear = async () => {
     if (!userId.trim()) return
     try { await clearUserContext(userId.trim()); setContext([]); setCleared(true) }
-    catch { setError('Failed to clear context.') }
+    catch { setError('System failure during context purge.') }
   }
 
   const stats = context ? [
-    { label: 'Total Turns', value: context.length, icon: MessageSquare, color: 'var(--accent)' },
-    { label: 'Sessions', value: [...new Set(context.map(c => c.session_id))].length, icon: Activity, color: 'var(--accent2)' },
-    { label: 'Last Active', value: context.length ? new Date(context[context.length - 1].timestamp).toLocaleDateString() : '—', icon: Clock, color: '#e3b341' },
+    { label: 'Intelligence Turns', value: context.length, icon: MessageSquare, color: 'text-emerald-400' },
+    { label: 'Active Sessions', value: [...new Set(context.map(c => c.session_id))].length, icon: Activity, color: 'text-emerald-400' },
+    { label: 'Last Sync', value: context.length ? new Date(context[context.length - 1].timestamp).toLocaleDateString() : 'None', icon: Clock, color: 'text-white/40' },
   ] : []
 
   return (
-    <div style={{ height: '100%', overflowY: 'auto', background: 'var(--bg)', transition: 'background 0.3s' }}>
-      <div style={{ maxWidth: '760px', margin: '0 auto', padding: '32px 24px' }}>
+    <div className="h-full overflow-y-auto px-6 py-12 bg-[#050505]">
+      <div className="max-w-4xl mx-auto">
 
-        {/* Header */}
-        <div style={{ marginBottom: '32px', animation: 'fadeUp 0.4s ease both' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-            <div style={{
-              width: '36px', height: '36px', borderRadius: '10px',
-              background: 'var(--accent-dim)', border: '1px solid var(--accent-glow)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: 'var(--accent)',
-            }}>
-              <Database size={17} />
+        {/* ── Header ────────────────────────────────────────────────────────── */}
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-12"
+        >
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-400">
+              <ShieldCheck size={20} />
             </div>
-            <h1 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text)', fontFamily: 'DM Mono, monospace', letterSpacing: '0.03em' }}>
-              CONTEXT DASHBOARD
-            </h1>
+            <h1 className="font-display text-2xl font-bold tracking-tight">Intelligence Dashboard</h1>
           </div>
-          <p style={{ fontSize: '13px', color: 'var(--text2)', paddingLeft: '46px' }}>
-            Inspect and manage stored conversation memory for any user.
+          <p className="text-white/40 text-sm ml-13 max-w-lg">
+            Monitor and audit persistent memory logs across the centralized engine architecture.
           </p>
-        </div>
+        </motion.div>
 
-        {/* Lookup card */}
-        <div style={{
-          borderRadius: '16px',
-          background: 'var(--surface)',
-          border: '1px solid var(--border)',
-          padding: '20px',
-          marginBottom: '20px',
-          animation: 'fadeUp 0.4s ease 0.05s both',
-          transition: 'background 0.3s, border-color 0.3s',
-        }}>
-          <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text2)', marginBottom: '12px', fontFamily: 'DM Mono, monospace', letterSpacing: '0.05em' }}>
-            USER LOOKUP
-          </p>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <input
-              value={userId}
-              onChange={e => setUserId(e.target.value)}
-              onFocus={() => setInputFocused(true)}
-              onBlur={() => setInputFocused(false)}
-              onKeyDown={e => e.key === 'Enter' && fetchContext()}
-              placeholder="Enter user ID  (e.g. user-abc123)"
-              style={{
-                flex: 1,
-                padding: '10px 14px',
-                borderRadius: '10px',
-                background: 'var(--bg)',
-                border: `1.5px solid ${inputFocused ? 'var(--accent)' : 'var(--border)'}`,
-                boxShadow: inputFocused ? '0 0 0 3px var(--accent-dim)' : 'none',
-                color: 'var(--text)',
-                fontSize: '13px',
-                fontFamily: 'DM Mono, monospace',
-                outline: 'none',
-                transition: 'all 0.2s',
-              }}
-            />
+        {/* ── Lookup Area ────────────────────────────────────────────────────── */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="glass-panel p-6 rounded-[24px] border border-white/5 mb-8"
+        >
+          <label className="block text-[10px] uppercase tracking-widest text-white/30 font-semibold mb-4">Core Identity Access</label>
+          <div className="flex gap-3">
+            <div className={`
+              flex-1 flex items-center gap-3 px-4 py-3 rounded-xl border transition-all duration-300
+              ${inputFocused ? 'bg-white/5 border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.05)]' : 'bg-white/[0.02] border-white/10'}
+            `}>
+              <Search size={16} className={inputFocused ? 'text-emerald-400' : 'text-white/20'} />
+              <input
+                value={userId}
+                onChange={e => setUserId(e.target.value)}
+                onFocus={() => setInputFocused(true)}
+                onBlur={() => setInputFocused(false)}
+                onKeyDown={e => e.key === 'Enter' && fetchContext()}
+                placeholder="Enter Persistent User ID..."
+                className="flex-1 bg-transparent border-none outline-none text-sm text-white/90 placeholder:text-white/20"
+              />
+            </div>
+            
             <button
               onClick={fetchContext}
               disabled={loading || !userId.trim()}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '6px',
-                padding: '10px 16px',
-                borderRadius: '10px',
-                background: 'var(--accent)',
-                color: 'var(--bg)',
-                border: 'none', cursor: loading ? 'not-allowed' : 'pointer',
-                fontSize: '13px', fontWeight: 600, fontFamily: 'inherit',
-                opacity: !userId.trim() ? 0.5 : 1,
-                transition: 'all 0.18s',
-              }}
-              onMouseEnter={e => { if (userId.trim()) e.currentTarget.style.filter = 'brightness(1.1)' }}
-              onMouseLeave={e => e.currentTarget.style.filter = 'none'}
+              className="flex items-center gap-2 px-6 py-3 rounded-xl bg-emerald-500 text-black font-semibold text-sm hover:bg-emerald-400 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-[0_0_15px_rgba(16,185,129,0.2)]"
             >
-              <RefreshCw size={14} style={{ animation: loading ? 'spin 0.8s linear infinite' : 'none' }} />
-              {loading ? 'Loading…' : 'Fetch'}
+              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+              {loading ? 'Processing' : 'Access Data'}
             </button>
+
             <button
               onClick={handleClear}
               disabled={!userId.trim()}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '6px',
-                padding: '10px 14px',
-                borderRadius: '10px',
-                background: 'var(--danger-dim)',
-                color: 'var(--danger)',
-                border: '1px solid rgba(248,81,73,0.25)',
-                cursor: !userId.trim() ? 'not-allowed' : 'pointer',
-                fontSize: '13px', fontWeight: 600, fontFamily: 'inherit',
-                opacity: !userId.trim() ? 0.5 : 1,
-                transition: 'all 0.18s',
-              }}
-              onMouseEnter={e => { if (userId.trim()) { e.currentTarget.style.background = 'var(--danger)'; e.currentTarget.style.color = 'white' } }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'var(--danger-dim)'; e.currentTarget.style.color = 'var(--danger)' }}
+              className="px-4 py-3 rounded-xl border border-white/5 text-white/40 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 transition-all disabled:opacity-30"
             >
-              <Trash2 size={14} /> Clear
+              <Trash2 size={16} />
             </button>
           </div>
 
-          {/* Feedback */}
-          {error && (
-            <div style={{
-              marginTop: '10px', padding: '8px 12px', borderRadius: '8px',
-              background: 'var(--danger-dim)', border: '1px solid rgba(248,81,73,0.25)',
-              color: 'var(--danger)', fontSize: '12px', animation: 'fadeIn 0.2s ease',
-            }}>
-              ⚠️ {error}
-            </div>
-          )}
-          {cleared && (
-            <div style={{
-              marginTop: '10px', padding: '8px 12px', borderRadius: '8px',
-              background: 'var(--accent-dim)', border: '1px solid var(--accent-glow)',
-              color: 'var(--accent)', fontSize: '12px', animation: 'fadeIn 0.2s ease',
-              fontFamily: 'DM Mono, monospace',
-            }}>
-              ✓ Context cleared successfully.
-            </div>
-          )}
-        </div>
+          <AnimatePresence>
+            {error && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mt-4 text-red-400 text-xs flex items-center gap-2">
+                <Zap size={12} /> {error}
+              </motion.div>
+            )}
+            {cleared && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mt-4 text-emerald-400 text-xs flex items-center gap-2">
+                <Check size={12} /> Persistence layer cleared successfully.
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
 
-        {/* Results */}
+        {/* ── Results ────────────────────────────────────────────────────────── */}
         {context !== null && (
-          <div style={{ animation: 'fadeUp 0.35s ease both' }}>
-
-            {/* Stats row */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '20px' }}>
+          <div className="space-y-8">
+            {/* Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {stats.map((s, i) => (
-                <div key={s.label} style={{
-                  borderRadius: '14px',
-                  background: 'var(--surface)',
-                  border: '1px solid var(--border)',
-                  padding: '16px',
-                  animation: `fadeUp 0.3s ease ${i * 0.07}s both`,
-                  transition: 'background 0.3s, border-color 0.3s',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px', color: 'var(--text2)' }}>
-                    <s.icon size={13} />
-                    <span style={{ fontSize: '11px', fontFamily: 'DM Mono, monospace', letterSpacing: '0.04em' }}>{s.label}</span>
+                <motion.div 
+                  key={s.label}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.2 + (i * 0.1) }}
+                  className="glass-panel p-5 rounded-2xl border border-white/5"
+                >
+                  <div className="flex items-center gap-2 mb-3 text-white/30">
+                    <s.icon size={12} />
+                    <span className="text-[10px] uppercase tracking-widest font-semibold">{s.label}</span>
                   </div>
-                  <div style={{ fontSize: '28px', fontWeight: 700, color: s.color, fontFamily: 'DM Mono, monospace', lineHeight: 1 }}>
+                  <div className={`text-2xl font-bold font-display ${s.color}`}>
                     {s.value}
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
 
-            {/* History */}
-            {context.length === 0 ? (
-              <div style={{
-                textAlign: 'center', padding: '48px 0',
-                background: 'var(--surface)', borderRadius: '16px', border: '1px solid var(--border)',
-              }}>
-                <Database size={32} style={{ color: 'var(--text3)', margin: '0 auto 12px' }} />
-                <p style={{ color: 'var(--text2)', fontSize: '14px' }}>No context found for this user.</p>
-                <p style={{ color: 'var(--text3)', fontSize: '12px', marginTop: '4px' }}>Start a conversation in the Chat tab first.</p>
+            {/* Logs */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+            >
+              <div className="flex items-center justify-between mb-4 px-1">
+                <h3 className="text-xs uppercase tracking-widest text-white/30 font-semibold">Intelligence Logs</h3>
+                <span className="text-[10px] font-mono text-white/20 uppercase tracking-widest">{context.length} entries located</span>
               </div>
-            ) : (
-              <div>
-                <p style={{ fontSize: '11px', color: 'var(--text3)', marginBottom: '10px', fontFamily: 'DM Mono, monospace', letterSpacing: '0.05em' }}>
-                  INTERACTION HISTORY · {context.length} turn{context.length !== 1 ? 's' : ''}
-                </p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+
+              {context.length === 0 ? (
+                <div className="glass-panel p-20 flex flex-col items-center justify-center rounded-[32px] border border-white/5 opacity-40">
+                   <Database size={40} className="mb-4 text-emerald-500/50" />
+                   <p className="text-sm font-medium">No intelligence trace found</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
                   {context.map((turn, i) => (
-                    <div key={i} style={{
-                      borderRadius: '14px',
-                      background: 'var(--surface)',
-                      border: '1px solid var(--border)',
-                      overflow: 'hidden',
-                      animation: `fadeUp 0.3s ease ${i * 0.04}s both`,
-                      transition: 'background 0.3s, border-color 0.3s',
-                    }}>
-                      {/* Turn header */}
-                      <div style={{
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                        padding: '10px 14px',
-                        background: 'var(--surface2)',
-                        borderBottom: '1px solid var(--border)',
-                      }}>
-                        <div style={{
-                          fontSize: '11px', fontFamily: 'DM Mono, monospace',
-                          color: 'var(--accent2)',
-                          background: 'var(--accent2-dim)', border: '1px solid rgba(88,166,255,0.2)',
-                          padding: '2px 8px', borderRadius: '20px',
-                        }}>
-                          {turn.session_id?.slice(0, 8)}…
+                    <motion.div 
+                      key={i}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.5 + (i * 0.05) }}
+                      className="glass-panel rounded-2xl border border-white/5 overflow-hidden group"
+                    >
+                      <div className="bg-white/[0.02] px-4 py-2 border-b border-white/5 flex justify-between items-center">
+                        <div className="text-[10px] font-mono text-emerald-400 bg-emerald-500/5 px-2 py-0.5 rounded border border-emerald-500/10">
+                          {turn.session_id?.slice(0, 8)}
                         </div>
-                        <span style={{ fontSize: '11px', color: 'var(--text3)', fontFamily: 'DM Mono, monospace' }}>
+                        <span className="text-[10px] font-mono text-white/20">
                           {new Date(turn.timestamp).toLocaleString()}
                         </span>
                       </div>
-
-                      {/* Turn body */}
-                      <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        <div style={{ display: 'flex', gap: '10px' }}>
-                          <div style={{
-                            width: '22px', height: '22px', borderRadius: '6px', flexShrink: 0,
-                            background: 'var(--accent-dim)', border: '1px solid var(--accent-glow)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            color: 'var(--accent)', marginTop: '1px',
-                          }}>
-                            <User size={11} />
-                          </div>
-                          <p style={{ fontSize: '13px', color: 'var(--text)', lineHeight: '1.5', flex: 1 }}>
-                            {turn.user}
-                          </p>
+                      <div className="p-4 space-y-4">
+                        <div className="flex gap-3 items-start">
+                          <User size={14} className="mt-1 text-white/20" />
+                          <p className="text-sm text-white/70 leading-relaxed">{turn.user}</p>
                         </div>
-                        <div style={{ display: 'flex', gap: '10px' }}>
-                          <div style={{
-                            width: '22px', height: '22px', borderRadius: '6px', flexShrink: 0,
-                            background: 'var(--surface2)', border: '1px solid var(--border)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            color: 'var(--text2)', marginTop: '1px',
-                          }}>
-                            <Bot size={11} />
-                          </div>
-                          <p style={{ fontSize: '13px', color: 'var(--text2)', lineHeight: '1.5', flex: 1 }}>
-                            {turn.assistant?.slice(0, 240)}{turn.assistant?.length > 240 ? '…' : ''}
+                        <div className="flex gap-3 items-start p-3 bg-white/[0.01] rounded-xl border border-white/5">
+                          <Bot size={14} className="mt-1 text-emerald-500/40" />
+                          <p className="text-sm text-white/40 leading-relaxed italic line-clamp-3 group-hover:line-clamp-none transition-all duration-500">
+                            {turn.assistant}
                           </p>
                         </div>
                       </div>
-                    </div>
+                    </motion.div>
                   ))}
                 </div>
-              </div>
-            )}
+              )}
+            </motion.div>
           </div>
         )}
       </div>

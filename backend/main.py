@@ -60,6 +60,7 @@ async def interact_stream(request: InteractionRequest):
         detected_lang, normalized_text = multilingual_module.process(
             request.message, request.language
         )
+        target_lang_name = multilingual_module.SUPPORTED_LANGUAGES.get(detected_lang, "English")
         context = context_engine.get_context(request.user_id, request.session_id)
 
         def event_generator():
@@ -72,6 +73,7 @@ async def interact_stream(request: InteractionRequest):
                     user_id=request.user_id,
                     message=normalized_text,
                     context=context,
+                    target_lang_name=target_lang_name,
                     session_id=request.session_id,
                     image_base64=request.image_base64,
                 ):
@@ -86,10 +88,8 @@ async def interact_stream(request: InteractionRequest):
                 pass
             finally:
                 if full_response:
-                    # Translate if needed
-                    final_text = multilingual_module.translate_response(full_response, detected_lang)
-                    context_engine.update(request.user_id, request.message, final_text, final_session_id)
-                    adaptive_engine.record_interaction(request.user_id, request.message, final_text)
+                    context_engine.update(request.user_id, request.message, full_response, final_session_id)
+                    adaptive_engine.record_interaction(request.user_id, request.message, full_response)
                 # Signal done
                 yield f"data: {json.dumps({'done': True, 'session_id': final_session_id})}\n\n"
 
@@ -114,20 +114,21 @@ async def interact(request: InteractionRequest):
         detected_lang, normalized_text = multilingual_module.process(
             request.message, request.language
         )
+        target_lang_name = multilingual_module.SUPPORTED_LANGUAGES.get(detected_lang, "English")
         context = context_engine.get_context(request.user_id, request.session_id)
         response_text, confidence, session_id = reasoning_engine.generate(
             platform_id=request.platform_id,
             user_id=request.user_id,
             message=normalized_text,
             context=context,
+            target_lang_name=target_lang_name,
             session_id=request.session_id,
             image_base64=request.image_base64,
         )
-        final_response = multilingual_module.translate_response(response_text, detected_lang)
-        context_engine.update(request.user_id, request.message, final_response, session_id)
-        adaptive_engine.record_interaction(request.user_id, request.message, final_response)
+        context_engine.update(request.user_id, request.message, response_text, session_id)
+        adaptive_engine.record_interaction(request.user_id, request.message, response_text)
         return {
-            "response_text": final_response,
+            "response_text": response_text,
             "detected_language": detected_lang,
             "context_used": bool(context),
             "confidence_score": confidence,
