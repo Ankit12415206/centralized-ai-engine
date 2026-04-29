@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+env/
+.env
+
+# Database
+*.db
+*.sqlite3
+
+# Node.js
+node_modules/
+dist/
+.npm
+*.log
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Project specific
+.zencoder/
+.zenflow/
