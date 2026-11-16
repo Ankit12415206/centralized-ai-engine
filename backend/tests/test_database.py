@@ -18,7 +18,13 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
+AXIOM_KEY = os.getenv("AXIOM_WEB_KEY")
 EDU_KEY = os.getenv("EDUCATION_PLATFORM_KEY")
+
+if not AXIOM_KEY:
+    raise ValueError("Missing required test configuration: AXIOM_WEB_KEY is not set in environment or .env")
+if not EDU_KEY:
+    raise ValueError("Missing required test configuration: EDUCATION_PLATFORM_KEY is not set in environment or .env")
 
 from modules.database import (
     DB_PATH,
@@ -168,7 +174,7 @@ def test_identity_validation_a1_a2_a3():
     print(f"✓ Test A1 PASSED: fake-platform rejected with '{msg}'")
 
     # Test A2: Forged User Identity
-    valid, msg = validate_identity(platform_id="axiom-web", platform_key="axiom-secret-key-2026", user_id="hacker_user")
+    valid, msg = validate_identity(platform_id="axiom-web", platform_key=AXIOM_KEY, user_id="hacker_user")
     assert not valid, "Unregistered user on platform should fail"
     assert msg == "User not registered on this platform", f"Expected 'User not registered on this platform', got '{msg}'"
     print(f"✓ Test A2 PASSED: hacker_user rejected with '{msg}'")
@@ -186,7 +192,7 @@ def test_identity_validation_a1_a2_a3():
     print("✓ Missing platform key strictly rejected (no bypass)")
 
     # Test Valid Platform with Valid Key
-    valid, msg = validate_identity(platform_id="axiom-web", platform_key="axiom-secret-key-2026", user_id="ankit_user")
+    valid, msg = validate_identity(platform_id="axiom-web", platform_key=AXIOM_KEY, user_id="ankit_user")
     assert valid, f"Platform with valid key should be valid, got {msg}"
     print("✓ Platform with valid key PASSED")
 

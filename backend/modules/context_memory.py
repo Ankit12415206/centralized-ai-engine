@@ -253,7 +253,7 @@ class ContextMemoryEngine:
         import os
         effective_key = acting_platform_key
         if not effective_key and acting_platform_id == "axiom-web":
-            effective_key = os.getenv("AXIOM_WEB_KEY", "axiom-secret-key-2026")
+            effective_key = os.getenv("AXIOM_WEB_KEY", "")
 
         # Identity validation of acting platform
         is_valid, reason = validate_identity(acting_platform_id, effective_key, user_id)

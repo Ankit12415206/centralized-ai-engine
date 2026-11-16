@@ -15,7 +15,13 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
+AXIOM_KEY = os.getenv("AXIOM_WEB_KEY")
 EDU_KEY = os.getenv("EDUCATION_PLATFORM_KEY")
+
+if not AXIOM_KEY:
+    raise ValueError("Missing required test configuration: AXIOM_WEB_KEY is not set in environment or .env")
+if not EDU_KEY:
+    raise ValueError("Missing required test configuration: EDUCATION_PLATFORM_KEY is not set in environment or .env")
 
 from modules.database import get_connection, validate_identity
 from modules.context_memory import ContextMemoryEngine
@@ -53,7 +59,7 @@ def test_identity_binding_audit():
     # Alice and Bob are both registered on axiom-web.
     # Alice makes an API call on axiom-web claiming user_id='bob_demo'.
     # Because identity is currently asserted by the client without an individual user session/password:
-    valid_bob_on_axiom, _ = validate_identity("axiom-web", "axiom-secret-key-2026", "bob_demo")
+    valid_bob_on_axiom, _ = validate_identity("axiom-web", AXIOM_KEY, "bob_demo")
     assert valid_bob_on_axiom, "Backend validates that bob_demo is a valid user on axiom-web"
 
     # Since no individual user session token exists, querying with bob_demo returns Bob's memories!

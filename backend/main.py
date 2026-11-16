@@ -91,7 +91,7 @@ def resolve_platform_key(platform_id: str, supplied_key: Optional[str], request:
         return header_key
 
     if platform_id == "axiom-web" and is_first_party_web_request(request):
-        return os.getenv("AXIOM_WEB_KEY", "axiom-secret-key-2026")
+        return os.getenv("AXIOM_WEB_KEY", "")
 
     return ""
 

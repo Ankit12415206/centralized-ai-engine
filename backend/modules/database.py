@@ -19,7 +19,7 @@ DB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "ai_engi
 
 # Demo platforms and users for CA prototype
 DEMO_PLATFORMS = [
-    ("axiom-web", os.getenv("AXIOM_WEB_KEY", "axiom-secret-key-2026"), "AXIOM Web Dashboard"),
+    ("axiom-web", os.getenv("AXIOM_WEB_KEY", ""), "AXIOM Web Dashboard"),
     ("education-platform", os.getenv("EDUCATION_PLATFORM_KEY", ""), "Education Platform"),
 ]
 
