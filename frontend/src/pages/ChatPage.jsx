@@ -1,8 +1,8 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
-  Send, Mic, Image as ImageIcon, StopCircle, RefreshCw, 
-  Trash2, ChevronDown, Check, Copy, Volume2, Square, Clock
+  Send, Mic, Image as ImageIcon, Trash2, ChevronDown, 
+  Volume2, Square, Globe, Lock, Share2, AlertCircle, Layers
 } from 'lucide-react'
 import { streamMessage, transcribeAudio, synthesizeSpeech, getSessionHistory } from '../utils/api'
 import ReactMarkdown from 'react-markdown'
@@ -11,16 +11,24 @@ import { useTheme } from '../context/ThemeContext'
 const ChatPage = () => {
   const { theme } = useTheme()
   const [messages, setMessages] = useState([
-    { id: 0, role: 'assistant', content: 'Welcome to **AXIOM Intelligence**. How can I assist you today?' }
+    { 
+      id: 0, 
+      role: 'assistant', 
+      content: 'Welcome to **AXIOM Intelligence**. Cross-platform memory isolation and permission gating are active.' 
+    }
   ])
   const [input, setInput] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
-  const [isSpeaking, setIsSpeaking] = useState(false)
   const [sessionId, setSessionId] = useState(null)
   const [language, setLanguage] = useState('en')
   const [image, setImage] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
+  const [errorMsg, setErrorMsg] = useState('')
+
+  // Cross-Platform Controls
+  const [platformId, setPlatformId] = useState('axiom-web')
+  const [memoryScope, setMemoryScope] = useState('global') // 'global' | 'platform'
   
   const abortControllerRef = useRef(null)
   const scrollRef = useRef(null)
@@ -40,13 +48,18 @@ const ChatPage = () => {
   useEffect(() => {
     const handleLoad = async (e) => {
       const { sessionId } = e.detail
-      const history = await getSessionHistory(USER_ID, sessionId)
-      setSessionId(sessionId)
-      setMessages(history.map((m, i) => ({ ...m, id: i })))
+      try {
+        const history = await getSessionHistory(USER_ID, sessionId, platformId)
+        setSessionId(sessionId)
+        setMessages(history.map((m, i) => ({ ...m, id: i })))
+      } catch (err) {
+        console.error("Failed to load session history", err)
+      }
     }
     const handleNew = () => {
       setSessionId(null)
       setMessages([{ id: 0, role: 'assistant', content: 'New session started. How can I help?' }])
+      setErrorMsg('')
     }
 
     window.addEventListener('load-session', handleLoad)
@@ -55,7 +68,7 @@ const ChatPage = () => {
       window.removeEventListener('load-session', handleLoad)
       window.removeEventListener('new-chat', handleNew)
     }
-  }, [])
+  }, [platformId])
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -78,7 +91,14 @@ const ChatPage = () => {
   const handleSend = async () => {
     if ((!input.trim() && !image) || isStreaming) return
 
-    const userMessage = { id: Date.now(), role: 'user', content: input, image: imagePreview }
+    setErrorMsg('')
+    const userMessage = { 
+      id: Date.now(), 
+      role: 'user', 
+      content: input, 
+      image: imagePreview,
+      memoryScope
+    }
     setMessages(prev => [...prev, userMessage])
     setInput('')
     setImage(null)
@@ -91,8 +111,9 @@ const ChatPage = () => {
     abortControllerRef.current = streamMessage(
       { 
         message: input, 
-        platformId: 'axiom-web', 
-        userId: USER_ID, 
+        platformId, 
+        userId: USER_ID,
+        memoryScope,
         language, 
         sessionId,
         imageBase64: image
@@ -105,12 +126,12 @@ const ChatPage = () => {
       },
       () => {
         setIsStreaming(false)
-        // Refresh sidebar sessions
         window.dispatchEvent(new CustomEvent('refresh-sessions'))
       },
       (err) => {
         setIsStreaming(false)
-        console.error(err)
+        console.error("Streaming error:", err)
+        setErrorMsg(err.message || 'Stream failed. Verify backend and platform permissions.')
       }
     )
   }
@@ -152,11 +173,32 @@ const ChatPage = () => {
         <div className="flex items-center gap-3">
           <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           <h2 className="font-display font-semibold text-[10px] tracking-widest opacity-60 uppercase">
-            {sessionId ? `Session: ${sessionId.slice(0,8)}...` : 'Axiom Intelligence'}
+            {sessionId ? `Session: ${sessionId.slice(0,8)}...` : 'AXIOM Intelligence'}
           </h2>
+
+          {/* Active Platform Pill */}
+          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold tracking-tight">
+            <Layers size={10} />
+            <span>{platformId}</span>
+          </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          {/* Memory Scope Toggle (Global vs Platform-Private) */}
+          <button
+            onClick={() => setMemoryScope(s => s === 'global' ? 'platform' : 'global')}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-lg border text-[10px] font-bold uppercase tracking-wider transition-all ${
+              memoryScope === 'global'
+                ? 'bg-blue-500/10 border-blue-500/30 text-blue-400 hover:bg-blue-500/20'
+                : 'bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20'
+            }`}
+            title={memoryScope === 'global' ? 'Global memory (shared if permitted)' : 'Private memory (strictly isolated to this platform)'}
+          >
+            {memoryScope === 'global' ? <Globe size={12} /> : <Lock size={12} />}
+            <span>{memoryScope === 'global' ? 'Global Scope' : 'Private Scope'}</span>
+          </button>
+
+          {/* Language Selector */}
           <div className="relative group">
             <select 
               value={language}
@@ -168,67 +210,104 @@ const ChatPage = () => {
             <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-40" />
           </div>
           
+          {/* Clear Session */}
           <button 
-            onClick={() => { setMessages([{ id: 0, role: 'assistant', content: 'Context reset.' }]); setSessionId(null); }}
+            onClick={() => { setMessages([{ id: 0, role: 'assistant', content: 'Context reset.' }]); setSessionId(null); setErrorMsg(''); }}
             className="p-2 hover:bg-red-500/10 rounded-lg transition-colors text-[var(--text-secondary)] hover:text-red-500"
-            title="Clear Chat"
+            title="Clear Chat View"
           >
             <Trash2 size={16} />
           </button>
         </div>
       </header>
 
+      {/* ── Error Banner ───────────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {errorMsg && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="bg-red-500/10 border-b border-red-500/20 px-8 py-2 text-red-400 text-xs font-semibold flex items-center justify-between"
+          >
+            <div className="flex items-center gap-2">
+              <AlertCircle size={14} />
+              <span>{errorMsg}</span>
+            </div>
+            <button onClick={() => setErrorMsg('')} className="text-xs hover:underline">Dismiss</button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ── Messages Area ─────────────────────────────────────────────────── */}
       <div 
         ref={scrollRef}
         className="flex-1 overflow-y-auto px-6 py-10 scroll-smooth scrollbar-hide"
       >
-        <div className="max-w-3xl mx-auto space-y-10 pb-20">
+        <div className="max-w-3xl mx-auto space-y-8 pb-20">
           <AnimatePresence initial={false}>
-            {messages.map((msg) => (
-              <motion.div
-                key={msg.id}
-                initial={{ opacity: 0, y: 5 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`flex gap-6 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
-              >
-                <div className={`
-                  w-8 h-8 rounded-lg shrink-0 flex items-center justify-center font-bold text-[10px]
-                  ${msg.role === 'user' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-[var(--surface-hover)] border border-[var(--border)]'}
-                `}>
-                  {msg.role === 'user' ? 'U' : 'A'}
-                </div>
-                
-                <div className={`flex flex-col max-w-[85%] ${msg.role === 'user' ? 'items-end' : ''}`}>
-                  {msg.image && (
-                    <img src={msg.image} alt="upload" className="max-w-sm rounded-xl mb-3 border border-[var(--border)] shadow-xl" />
-                  )}
+            {messages.map((msg) => {
+              // Check if message content has cross-platform provenance tag
+              const isCrossPlatform = typeof msg.content === 'string' && msg.content.includes('[From ')
+
+              return (
+                <motion.div
+                  key={msg.id}
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
+                >
                   <div className={`
-                    prose prose-sm dark:prose-invert max-w-none px-6 py-4 rounded-2xl
-                    ${msg.role === 'user' 
-                      ? 'bg-emerald-500 text-white selection:bg-white/20 shadow-lg shadow-emerald-500/10' 
-                      : 'bg-[var(--surface-solid)] border border-[var(--border)] shadow-sm'}
+                    w-8 h-8 rounded-lg shrink-0 flex items-center justify-center font-bold text-[10px]
+                    ${msg.role === 'user' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-[var(--surface-hover)] border border-[var(--border)]'}
                   `}>
-                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+                    {msg.role === 'user' ? 'U' : 'A'}
                   </div>
-                  {msg.role === 'assistant' && msg.content && (
-                    <div className="flex gap-2 mt-2 ml-1 opacity-40 hover:opacity-100 transition-opacity">
-                      <button 
-                        onClick={() => {
-                          synthesizeSpeech(msg.content, language).then(src => {
-                            const a = new Audio(src)
-                            a.play()
-                          })
-                        }}
-                        className="p-1.5 hover:bg-[var(--surface-hover)] rounded-md text-[var(--text-secondary)]"
-                      >
-                        <Volume2 size={12} />
-                      </button>
+                  
+                  <div className={`flex flex-col max-w-[85%] ${msg.role === 'user' ? 'items-end' : ''}`}>
+                    {/* Provenance Banner if from external platform */}
+                    {isCrossPlatform && (
+                      <div className="flex items-center gap-1.5 mb-1.5 px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-mono font-bold">
+                        <Share2 size={10} />
+                        <span>Authorized Cross-Platform Context</span>
+                      </div>
+                    )}
+
+                    {msg.image && (
+                      <img src={msg.image} alt="upload" className="max-w-sm rounded-xl mb-3 border border-[var(--border)] shadow-xl" />
+                    )}
+
+                    <div className={`
+                      prose prose-sm dark:prose-invert max-w-none px-6 py-4 rounded-2xl
+                      ${msg.role === 'user' 
+                        ? 'bg-emerald-500 text-white selection:bg-white/20 shadow-lg shadow-emerald-500/10' 
+                        : 'bg-[var(--surface-solid)] border border-[var(--border)] shadow-sm'}
+                    `}>
+                      <ReactMarkdown>{msg.content}</ReactMarkdown>
                     </div>
-                  )}
-                </div>
-              </motion.div>
-            ))}
+
+                    {msg.role === 'assistant' && msg.content && (
+                      <div className="flex gap-2 mt-2 ml-1 opacity-40 hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => {
+                            synthesizeSpeech(msg.content, language).then(src => {
+                              const a = new Audio(src)
+                              a.play()
+                            }).catch(err => {
+                              console.warn("TTS playback unavailable (environment dependent):", err)
+                            })
+                          }}
+                          className="p-1.5 hover:bg-[var(--surface-hover)] rounded-md text-[var(--text-secondary)]"
+                          title="Speak response"
+                        >
+                          <Volume2 size={12} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )
+            })}
           </AnimatePresence>
         </div>
       </div>
@@ -277,7 +356,7 @@ const ChatPage = () => {
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSend())}
-              placeholder="Message Axiom..."
+              placeholder={`Message Axiom (${memoryScope === 'global' ? 'Global scope' : 'Private scope'})...`}
               className="flex-1 bg-transparent border-none focus:ring-0 text-sm py-3 px-2 resize-none max-h-48 scrollbar-hide"
               rows={1}
             />

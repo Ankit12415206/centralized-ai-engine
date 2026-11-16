@@ -8,10 +8,23 @@ const api = axios.create({
 })
 
 /**
- * Stream a message response — calls onChunk for each token,
- * onDone when finished. Returns an AbortController so caller can stop it.
+ * Streams an AI response token by token using Server-Sent Events (SSE).
+ * Validates response status (400, 403, 500) before streaming.
  */
-export function streamMessage({ message, platformId, userId, language = 'en', sessionId = null, imageBase64 = null }, onChunk, onDone, onError) {
+export function streamMessage(
+  {
+    message,
+    platformId = 'axiom-web',
+    userId,
+    memoryScope = 'global',
+    language = 'en',
+    sessionId = null,
+    imageBase64 = null
+  },
+  onChunk,
+  onDone,
+  onError
+) {
   const controller = new AbortController()
 
   fetch(`${BASE_URL}/api/interact/stream`, {
@@ -22,12 +35,19 @@ export function streamMessage({ message, platformId, userId, language = 'en', se
       platform_id: platformId,
       user_id: userId,
       message,
+      memory_scope: memoryScope,
       language,
       session_id: sessionId,
       image_base64: imageBase64,
     }),
   })
     .then(async (res) => {
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}))
+        const errorMsg = errJson.detail || `Server returned ${res.status}: ${res.statusText}`
+        throw new Error(errorMsg)
+      }
+
       const reader = res.body.getReader()
       const decoder = new TextDecoder()
 
@@ -54,7 +74,7 @@ export function streamMessage({ message, platformId, userId, language = 'en', se
       if (err.name !== 'AbortError') onError(err)
     })
 
-  return controller  // caller calls controller.abort() to stop
+  return controller
 }
 
 export async function transcribeAudio(audioBlob) {
@@ -71,24 +91,75 @@ export async function synthesizeSpeech(text, language = 'en') {
   return `data:audio/mp3;base64,${res.data.audio_base64}`
 }
 
-export async function getUserContext(userId) {
-  const res = await api.get(`/api/context/${userId}`)
+export async function getUserContext(userId, platformId = 'axiom-web', sessionId = null) {
+  const params = { platform_id: platformId }
+  if (sessionId) params.session_id = sessionId
+  const res = await api.get(`/api/context/${userId}`, { params })
   return res.data.context
 }
 
-export async function clearUserContext(userId) {
-  const res = await api.delete(`/api/context/${userId}`)
+export async function clearUserContext(userId, platformId = 'axiom-web', scope = 'all') {
+  const res = await api.delete(`/api/context/${userId}`, {
+    params: { platform_id: platformId, scope }
+  })
   return res.data
 }
 
-export async function getSessions(userId) {
-  const res = await api.get(`/api/sessions/${userId}`)
+export async function getSessions(userId, platformId = 'axiom-web') {
+  const res = await api.get(`/api/sessions/${userId}`, {
+    params: { platform_id: platformId }
+  })
   return res.data.sessions
 }
 
-export async function getSessionHistory(userId, sessionId) {
-  const res = await api.get(`/api/history/${userId}/${sessionId}`)
+export async function getSessionHistory(userId, sessionId, platformId = 'axiom-web') {
+  const res = await api.get(`/api/history/${userId}/${sessionId}`, {
+    params: { platform_id: platformId }
+  })
   return res.data.messages
+}
+
+export async function getPermissions(userId, requestingPlatformId = 'axiom-web') {
+  const res = await api.get(`/api/permissions/${userId}`, {
+    params: { requesting_platform_id: requestingPlatformId }
+  })
+  return res.data.permissions
+}
+
+export async function setPermission({ userId, ownerPlatformId, requesterPlatformId, status = 'granted', actingPlatformId = 'axiom-web' }) {
+  const res = await api.post('/api/permissions', {
+    user_id: userId,
+    owner_platform_id: ownerPlatformId,
+    requester_platform_id: requesterPlatformId,
+    status,
+    acting_platform_id: actingPlatformId
+  })
+  return res.data
+}
+
+export async function updatePermission({ userId, ownerPlatformId, requesterPlatformId, status, actingPlatformId = 'axiom-web' }) {
+  const res = await api.put('/api/permissions', {
+    user_id: userId,
+    owner_platform_id: ownerPlatformId,
+    requester_platform_id: requesterPlatformId,
+    status,
+    acting_platform_id: actingPlatformId
+  })
+  return res.data
+}
+
+export async function getPlatforms(userId, requestingPlatformId = 'axiom-web') {
+  const res = await api.get(`/api/platforms/${userId}`, {
+    params: { requesting_platform_id: requestingPlatformId }
+  })
+  return res.data.platforms
+}
+
+export async function getPreferences(userId, platformId = 'axiom-web') {
+  const res = await api.get(`/api/preferences/${userId}`, {
+    params: { platform_id: platformId }
+  })
+  return res.data.preferences
 }
 
 export default api
